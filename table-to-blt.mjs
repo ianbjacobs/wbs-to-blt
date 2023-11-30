@@ -62,10 +62,10 @@ function generateBLT (document, nbseats, electionname, ignoreskips = false) {
   console.log("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(`\"Candidate ${i + 1}\"`);    
+    console.log(`"Candidate ${i + 1}"`);    
   }
   // Election name
-  console.log(`\"${electionname}\"`);
+  console.log(`"${electionname}"`);
 }
 
 function generateBallots(document, rows, candidates) {
