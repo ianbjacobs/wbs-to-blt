@@ -29,76 +29,78 @@
 *   ballot is valid." Therefore we preserve empty ballots.
 */
 
-import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 
 async function main(file, nbseats, electionname) {
-    const html = await readFile(file, { encoding: 'utf8'});
-    let dom = new JSDOM(html);
-    generateBLT(dom, nbseats, electionname);
+    if (isNaN(nbseats)) {
+       throw new Error(`Required number of seats missing.`);
+    }
+    const dom = await JSDOM.fromFile(file);
+    generateBLT(dom.window.document, nbseats, electionname);
 }
 
-function generateBLT (dom, nbseats, electionname) {
+function generateBLT (document, nbseats, electionname, ignoreskips = false) {
   // NOTE: The first column is the name of the voter.
-  let table = dom.window.document.querySelector("table")
+  const table = document.querySelector("table")
 
-  // Ignore first column in determining number of candidates.
-  const nbcandidates = table.querySelector("tr").querySelectorAll('td,th').length - 1;
-  let rows = table.querySelectorAll("tr");
+  const rows = [...table.querySelectorAll("tr")];
+  // Use first row of table since zeroth row is all th.
+  const nbcandidates = rows[1].querySelectorAll('td').length;
 
   // candidates is the list of candidate names, taken from the top (zeroth) row of the table.
-  const candidates = Array.from(rows[0].querySelectorAll('th')).map(s => s.innerHTML).slice(1) ;
+  const candidates = [...rows[0].querySelectorAll('th')].map(s => s.textContent).slice(1) ;
     
   // Create ballots
-  const ballots = generateBallots(dom, rows, candidates);
+  const ballots = generateBallots(document, rows, candidates);
   
   // Start output in BLT format
   // First row is number of candidates and number of seats
-  console.log(nbcandidates + " " + nbseats);
+  console.log(`${nbcandidates} ${nbseats}`);  
   // List of ballots, each with weight "1" and ending with "0"
   console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));
   // Zero separator
   console.log("0");
   // Names of candidates, ignoring the first column.
-  for (let i = 1; i <= nbcandidates; i++) {
-    console.log("\"Candidate " + i + "\"");
+  for (let i = 0; i < nbcandidates; i++) {
+    console.log(`\"Candidate ${i + 1}\"`);    
   }
   // Election name
-  console.log("\"" + electionname + "\"");
+  console.log(`\"${electionname}\"`);
 }
 
-function generateBallots(dom, rows, candidates) {
-    let ballots = [];
+function generateBallots(document, rows, candidates) {
+    const ballots = [];
+
     // Handle rows. Ignore top (zeroth) row since that is candidate names.
-    for (let i = 1; i < rows.length; i++) {
+    for (const row of rows.slice(1)) {
         // Handle cells in the row.
-        let cells = rows[i].querySelectorAll('td');
-	let unranked = Array.from(cells).map(getVote);
+        const cells = row.querySelectorAll('td');
+	const unranked = Array.from(cells).map(getVote);
 
         // Per OpenSTV, ballot is invalid if there are duplicate rankings.
         if (duplicateRankings(unranked)) {
-	   console.error("Ballot ignored (duplicate rankings): " + rows[i].querySelector('th').innerHTML);
+	   console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
 	   continue;
 	}
 
         // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked.
-        let rankedcells = [...unranked].sort(sortByRank);
+        const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
 
         // Per OpenSTV, ballot is invalid if there are skips in rankings.
-        if (!noSkips(rankedcells, cells.length)) {
-	   console.error("Ballot ignored (skips in rankings): " + rows[i].querySelector('th').innerHTML);
+	// However, if ignoreskips is true, allow ballot with skips.
+        if (!noSkips(rankedcells) && !ignoreskips) {
+	   console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
 	   continue;
 	}
 
-	let ordered = [];
-        for (let j = 0; j < cells.length; j++) {
-	  // Unranked candidates are demoted in the list by giving them very high rank (Number.POSITIVE_INFINITY).
-	  // Remove these candidates from the generated ballot.
-	  if (rankedcells[j].rank != Number.POSITIVE_INFINITY) {
-  	     ordered.push(candidates.indexOf(rankedcells[j].candidate) + 1);
-	  }
+	const ordered = [];
+	for (const cell of rankedcells) {
+	    // Unranked candidates are demoted in the list by giving them very high rank (Infinity).
+	    // Remove these candidates from the generated ballot.
+	    if (cell.rank != Infinity) {
+  	       ordered.push(candidates.indexOf(cell.candidate) + 1);
+	    }
         }
-
 	ballots.push(ordered);
     }
     return(ballots);
@@ -108,39 +110,52 @@ function getVote (cell) {
   // WBS form generates "Ranked N" (most of the time). Remove "Ranked"
   const re1 = /.*\s+([0123456789])$/ ;
   const re2 = /\s*Unranked\s*/ ;
-  let title = cell.getAttribute('title');
-  if (title != null) {
-     return { candidate: title.split(':')[0], rank: title.split(':')[1].replace(re1, "$1").replace(re2, Number.POSITIVE_INFINITY) };
+  const title = cell.getAttribute('title');
 
-  } else {
-     return ("");
+  // Missing title 
+  if (!title) {
+     throw new Error(`Cell ${cell.outerHTML} empty title attribute`);
   }
-}
 
-function sortByRank(a, b) {
-  return a.rank - b.rank;
+  const [ candidate, strRank ] = title.split(':');
+
+  // Either candidate name or rank is missing.
+  if (!candidate || !strRank) {
+     throw new Error(`Cell ${cell.outerHTML} empty candidate or rank in title`);
+  }
+
+  const rank = strRank.match(re2) ? Infinity : parseInt(strRank.replace(re1, "$1"), 10);
+
+  // Rank is not an integer.
+  if (isNaN(rank)) {
+     throw new Error(`Cell ${cell.outerHTML} rank is not an integer`);
+  }
+
+  return { candidate, rank };
 }
 
 function duplicateRankings(ballot) {
-  const noUnranked = ballot.filter(v => v.rank != Number.POSITIVE_INFINITY);
+  const noUnranked = ballot.filter(v => v.rank != Infinity);
   const uniqueValues = new Set(noUnranked.map(v => v.rank));
   return (uniqueValues.size < noUnranked.length);
 }
 
-function noSkips(ballot, nb) {
+function noSkips(ballot) {
   // The ranks have been sorted here (with duplicate ballots thrown out).
   // Detect gaps by creating a string of the rankings and seeing if it's a strict substring
   // of j=1 to nbcandidates, starting at position zero. This allows for unranked candidates.
-  const canonical = Array(nb).fill().map((e,i) => i + 1).join('');
-  const ballotstring = ballot.map(e => e.rank == Number.POSITIVE_INFINITY ? '' : e.rank).join('');
+  const canonical = Array(ballot.length).fill().map((e,i) => i + 1).join('');
+  const ballotstring = ballot.map(e => e.rank == Infinity ? '' : e.rank).join('');
   return canonical.startsWith(ballotstring);
 }
 
 const file = process.argv[2];
 const nbseats = process.argv[3];
 const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
+const ignoreskips = process.argv[5] === undefined ? false : process.argv[5];
 
-main(file, nbseats, electionname)
+
+main(file, nbseats, electionname, ignoreskips)
   .catch(err => {
     console.log(`Something went wrong: ${err.message}`);
     throw err;
