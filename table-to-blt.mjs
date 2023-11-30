@@ -39,7 +39,7 @@ async function main(file, nbseats, electionname) {
     generateBLT(dom.window.document, nbseats, electionname);
 }
 
-function generateBLT (document, nbseats, electionname, ignoreskips = false) {
+function generateBLT (document, nbseats, electionname) {
   // NOTE: The first column is the name of the voter.
   const table = document.querySelector("table")
 
@@ -87,8 +87,7 @@ function generateBallots(document, rows, candidates) {
         const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
 
         // Per OpenSTV, ballot is invalid if there are skips in rankings.
-	// However, if ignoreskips is true, allow ballot with skips.
-        if (!noSkips(rankedcells) && !ignoreskips) {
+        if (!noSkips(rankedcells)) {
 	   console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
 	   continue;
 	}
@@ -152,10 +151,8 @@ function noSkips(ballot) {
 const file = process.argv[2];
 const nbseats = process.argv[3];
 const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
-const ignoreskips = process.argv[5] === undefined ? false : process.argv[5];
 
-
-main(file, nbseats, electionname, ignoreskips)
+main(file, nbseats, electionname)
   .catch(err => {
     console.log(`Something went wrong: ${err.message}`);
     throw err;
