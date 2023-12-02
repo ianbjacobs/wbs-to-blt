@@ -141,7 +141,7 @@ function duplicateRankings(ballot) {
 
 function skips(ballot) {
   // The ranks have been sorted here (with duplicate ballots thrown out).
-  // Remote Infinity. Each remaining ranking should be equal to index + 1.
+  // Remove Infinity. Each remaining ranking should be equal to index + 1.
   return ballot.filter(v => v.rank != Infinity).some((v,i) => v.rank != (i + 1))
 }
 
