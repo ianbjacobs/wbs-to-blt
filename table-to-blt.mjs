@@ -87,7 +87,7 @@ function generateBallots(document, rows, candidates) {
         const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
 
         // Per OpenSTV, ballot is invalid if there are skips in rankings.
-        if (!noSkips(rankedcells)) {
+        if (skips(rankedcells)) {
 	   console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
 	   continue;
 	}
@@ -139,13 +139,10 @@ function duplicateRankings(ballot) {
   return (uniqueValues.size < noUnranked.length);
 }
 
-function noSkips(ballot) {
+function skips(ballot) {
   // The ranks have been sorted here (with duplicate ballots thrown out).
-  // Detect gaps by creating a string of the rankings and seeing if it's a strict substring
-  // of j=1 to nbcandidates, starting at position zero. This allows for unranked candidates.
-  const canonical = Array(ballot.length).fill().map((e,i) => i + 1).join('');
-  const ballotstring = ballot.map(e => e.rank == Infinity ? '' : e.rank).join('');
-  return canonical.startsWith(ballotstring);
+  // Remote Infinity. Each remaining ranking should be equal to index + 1.
+  return ballot.filter(v => v.rank != Infinity).some((v,i) => v.rank != (i + 1))
 }
 
 const file = process.argv[2];
