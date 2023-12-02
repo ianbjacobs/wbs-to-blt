@@ -10,10 +10,10 @@
 * The rank-order control allows voters to leave candidates "Unranked".
 *
 * Arguments:
-* - HTML file with a table with class including "results"; the code picks the first one
-*   because this is what WBS forms produce.
-* - The number of seats available for election
-* - Optional: The title that should appear in the BLT file (not semantically important).
+* - document: HTML file with a table with class including "results"; the code picks the first one because this is what WBS forms produce.
+* - nbseats: The number of seats available for election
+* - electionname (optional): The title that should appear in the BLT file (not semantically important).
+* - shownames (optional) If true, show candidate names in the BLT. Default: false.
 *
 * For information about the BLT file format, see:
 * https://github.com/Conservatory/openstv/blob/master/openstv/Help.html
@@ -31,7 +31,7 @@
 
 import { JSDOM } from 'jsdom';
 
-async function main(file, nbseats, electionname) {
+async function main(file, nbseats, electionname, shownames = false) {
     if (isNaN(nbseats)) {
        throw new Error(`Required number of seats missing.`);
     }
@@ -62,7 +62,7 @@ function generateBLT (document, nbseats, electionname) {
   console.log("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(`"Candidate ${i + 1}"`);    
+    console.log(shownames ? `"${candidates[i]}"` : `"Candidate ${i + 1}"`);
   }
   // Election name
   console.log(`"${electionname}"`);
@@ -148,8 +148,9 @@ function skips(ballot) {
 const file = process.argv[2];
 const nbseats = process.argv[3];
 const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
+const shownames = process.argv[5] === undefined ? false : process.argv[5];
 
-main(file, nbseats, electionname)
+main(file, nbseats, electionname, shownames)
   .catch(err => {
     console.log(`Something went wrong: ${err.message}`);
     throw err;
