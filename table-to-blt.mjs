@@ -17,8 +17,13 @@
 *
 * For information about the BLT file format, see:
 * https://github.com/Conservatory/openstv/blob/master/openstv/Help.html
+* 
+* Data table assumptions
+* - First row (except for zeroth cell) has th elements with candidate names.
+* - First column (except for zeroth cell) has th elements with voter names
+* - Other cells are td elements with votes. See getVote for more details.
 *
-* Assumptions:
+* STV assumptions
 * - Each ballot has a weight of 1.
 * - OpenSTV says: You don't need to rank all of the candidates on each
 *                 ballot, but you cannot skip rankings and you 
@@ -40,20 +45,14 @@ async function main(file, nbseats, electionname, shownames = false) {
 }
 
 function generateBLT (document, nbseats, electionname) {
-  // NOTE: The first column is the name of the voter.
   const table = document.querySelector("table")
-
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
   const nbcandidates = rows[1].querySelectorAll('td').length;
-
-  // candidates is the list of candidate names, taken from the top (zeroth) row of the table.
   const candidates = [...rows[0].querySelectorAll('th')].map(s => s.textContent).slice(1) ;
-    
-  // Create ballots
   const ballots = generateBallots(document, rows, candidates);
   
-  // Start output in BLT format
+  // Generate BLT
   // First row is number of candidates and number of seats
   console.log(`${nbcandidates} ${nbseats}`);  
   // List of ballots, each with weight "1" and ending with "0"
@@ -71,7 +70,7 @@ function generateBLT (document, nbseats, electionname) {
 function generateBallots(document, rows, candidates) {
     const ballots = [];
 
-    // Handle rows. Ignore top (zeroth) row since that is candidate names.
+    // Ignore first row (candidate names)
     for (const row of rows.slice(1)) {
         // Handle cells in the row.
         const cells = row.querySelectorAll('td');
@@ -80,8 +79,7 @@ function generateBallots(document, rows, candidates) {
         // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked. Remove any 'Infinity' rankings.
         const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank).filter(v => v.rank != Infinity) ;
 
-        // Per OpenSTV, ballot is invalid if there are duplicate rankings
-	// or skips
+        // Per OpenSTV, ballot is invalid if there are duplicates or skips
 
         if (duplicateRankings(rankedcells)) {
 	  console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
