@@ -134,7 +134,7 @@ function getVote (cell) {
 }
 
 function duplicateRankings(ballot) {
-  // The ranks have been sorted here (with duplicate ballots thrown out).
+  // The ranks have been sorted here.
   // Remove Infinity. A difference between rank and index of gt 1
   // implies duplicate.
   return ballot.filter(v => v.rank != Infinity).some((v,i) => (v.rank - i) > 1)
