@@ -77,14 +77,14 @@ function generateBallots(document, rows, candidates) {
         const cells = row.querySelectorAll('td');
 	const unranked = Array.from(cells).map(getVote);
 
+        // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked.
+        const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
+
         // Per OpenSTV, ballot is invalid if there are duplicate rankings.
-        if (duplicateRankings(unranked)) {
+        if (duplicateRankings(rankedcells)) {
 	   console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
 	   continue;
 	}
-
-        // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked.
-        const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
 
         // Per OpenSTV, ballot is invalid if there are skips in rankings.
         if (skips(rankedcells)) {
@@ -134,9 +134,10 @@ function getVote (cell) {
 }
 
 function duplicateRankings(ballot) {
-  const noUnranked = ballot.filter(v => v.rank != Infinity);
-  const uniqueValues = new Set(noUnranked.map(v => v.rank));
-  return (uniqueValues.size < noUnranked.length);
+  // The ranks have been sorted here (with duplicate ballots thrown out).
+  // Remove Infinity. A difference between rank and index of gt 1
+  // implies duplicate.
+  return ballot.filter(v => v.rank != Infinity).some((v,i) => (v.rank - i) > 1)
 }
 
 function skips(ballot) {
