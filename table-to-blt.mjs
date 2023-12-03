@@ -77,31 +77,24 @@ function generateBallots(document, rows, candidates) {
         const cells = row.querySelectorAll('td');
 	const unranked = Array.from(cells).map(getVote);
 
-        // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked.
-        const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank);	
+        // Sort the candidates so the array of cells goes from top ranked (1) to lowest ranked. Remove any 'Infinity' rankings.
+        const rankedcells = unranked.toSorted((a,b) => a.rank - b.rank).filter(v => v.rank != Infinity) ;
 
-        // Per OpenSTV, ballot is invalid if there are duplicate rankings.
+        // Per OpenSTV, ballot is invalid if there are duplicate rankings
+	// or skips
+
         if (duplicateRankings(rankedcells)) {
-	   console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
-	   continue;
-	}
-
-        // Per OpenSTV, ballot is invalid if there are skips in rankings.
-        if (skips(rankedcells)) {
-	   console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
-	   continue;
-	}
-
-	const ordered = [];
-	for (const cell of rankedcells) {
-	    // Unranked candidates are demoted in the list by giving them very high rank (Infinity).
-	    // Remove these candidates from the generated ballot.
-	    if (cell.rank != Infinity) {
-  	       ordered.push(candidates.indexOf(cell.candidate) + 1);
-	    }
+	  console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
+	} else if (skips(rankedcells)) {
+          console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
+	} else {
+	  const ordered = [];
+	  for (const cell of rankedcells) {
+              ordered.push(candidates.indexOf(cell.candidate) + 1);
+          }
+	  ballots.push(ordered);
         }
-	ballots.push(ordered);
-    }
+    }	
     return(ballots);
  }
 
@@ -134,16 +127,15 @@ function getVote (cell) {
 }
 
 function duplicateRankings(ballot) {
-  // The ranks have been sorted here.
-  // Remove Infinity. A difference between rank and index of gt 1
-  // implies duplicate.
-  return ballot.filter(v => v.rank != Infinity).some((v,i) => (v.rank - i) > 1)
+  // ballot is sorted without Infinity.
+  // Each remaining ranking should be equal to index + 1.
+  return ballot.some((v,i) => v.rank != (i + 1))
 }
 
 function skips(ballot) {
-  // The ranks have been sorted here (with duplicate ballots thrown out).
-  // Remove Infinity. Each remaining ranking should be equal to index + 1.
-  return ballot.filter(v => v.rank != Infinity).some((v,i) => v.rank != (i + 1))
+  // ballot is sorted without Infinity.
+  // Each remaining ranking should be equal to index + 1.
+  return ballot.some((v,i) => v.rank != (i + 1))
 }
 
 const file = process.argv[2];
