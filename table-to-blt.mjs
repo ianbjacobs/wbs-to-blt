@@ -125,15 +125,17 @@ function getVote (cell) {
 }
 
 function duplicateRankings(ballot) {
-  // ballot is sorted without Infinity.
-  // Each remaining ranking should be equal to index + 1.
-  return ballot.some((v,i) => v.rank != (i + 1))
+  // Input ballot is sorted (no Infinity).
+  // In valid ballot, rank - index = 1.
+  // Rank - index = 0 implies duplicate. (e.g., 1 2 2 3 or 1 2 3 3)
+  return ballot.some((v,i) => (v.rank - i) == 0)
 }
 
 function skips(ballot) {
-  // ballot is sorted without Infinity.
-  // Each remaining ranking should be equal to index + 1.
-  return ballot.some((v,i) => v.rank != (i + 1))
+  // Input ballot is sorted (no Infinity).
+  // In valid ballot, rank - index = 1.
+  // Rank - index >= 2 implies skip. (e.g., 1 2 4 5 or 1 5 6)
+  return ballot.some((v,i) => (v.rank - i) >= 2)
 }
 
 const file = process.argv[2];
