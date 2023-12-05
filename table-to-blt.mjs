@@ -49,12 +49,19 @@ function generateBLT (document, nbseats, electionname) {
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
   const nbcandidates = rows[1].querySelectorAll('td').length;
-  const candidates = [...rows[0].querySelectorAll('th')].map(s => s.textContent).slice(1) ;
+  let candidates = [...rows[0].querySelectorAll('th')].map(s => s.textContent).slice(1) ;
+  const re0 = /Candidate has withdrawn from the election:\s/ ;
+  const withdrawn = candidates.map(c => c.match(re0) ? true : false) ;
+  candidates = candidates.map(c => c.replace(re0,'')) ;
   const ballots = generateBallots(document, rows, candidates);
   
   // Generate BLT
   // First row is number of candidates and number of seats
-  console.log(`${nbcandidates} ${nbseats}`);  
+  console.log(`${nbcandidates} ${nbseats}`);
+  // Identify any withdrawn candidates. Multiple withdrawn
+  // candidates can appear on one line, each with "-" next to
+  // candidate number (e.g., -2 -3 -4).
+  console.log(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join('')); 
   // List of ballots, each with weight "1" and ending with "0"
   console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));
   // Zero separator
@@ -100,12 +107,17 @@ function getVote (cell) {
   // WBS form generates "Ranked N" (most of the time). Remove "Ranked"
   const re1 = /.*\s+([0123456789])$/ ;
   const re2 = /\s*Unranked\s*/ ;
-  const title = cell.getAttribute('title');
+  const re3 = /Candidate has withdrawn from the election:\s/ ;
+  let title = cell.getAttribute('title');
 
   // Missing title 
   if (!title) {
      throw new Error(`Cell ${cell.outerHTML} empty title attribute`);
   }
+
+  // If candidate has withdrawn, remote that information from vote
+  // information; withdrawn candidates are identified in BLT generation.
+  title = title.replace(re3,'');
 
   const [ candidate, strRank ] = title.split(':');
 
