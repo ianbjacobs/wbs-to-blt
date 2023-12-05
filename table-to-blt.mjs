@@ -61,7 +61,9 @@ function generateBLT (document, nbseats, electionname) {
   // Identify any withdrawn candidates. Multiple withdrawn
   // candidates can appear on one line, each with "-" next to
   // candidate number (e.g., -2 -3 -4).
-  console.log(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join('')); 
+  if (withdrawn.some(w => w)) {
+    console.log(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join(''));
+  }
   // List of ballots, each with weight "1" and ending with "0"
   console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));
   // Zero separator
