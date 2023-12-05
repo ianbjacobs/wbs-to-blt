@@ -70,7 +70,7 @@ function generateBLT (document, nbseats, electionname) {
   console.log("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(shownames ? `"${candidates[i]}"` : `"Candidate ${i + 1}"`);
+    console.log(shownames ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
   }
   // Election name
   console.log(`"${electionname}"`);
