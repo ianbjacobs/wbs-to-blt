@@ -41,10 +41,10 @@ async function main(file, nbseats, electionname, shownames = false) {
        throw new Error(`Required number of seats missing.`);
     }
     const dom = await JSDOM.fromFile(file);
-    generateBLT(dom.window.document, nbseats, electionname);
+    generateBLT(dom.window.document, nbseats, electionname, shownames);
 }
 
-function generateBLT (document, nbseats, electionname) {
+function generateBLT (document, nbseats, electionname, shownames) {
   const table = document.querySelector("table")
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
