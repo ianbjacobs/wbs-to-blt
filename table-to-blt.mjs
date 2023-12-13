@@ -13,7 +13,8 @@
 * - document: HTML file with a table with class including "results"; the code picks the first one because this is what WBS forms produce.
 * - nbseats: The number of seats available for election
 * - electionname (optional): The title that should appear in the BLT file (not semantically important).
-* - shownames (optional) If true, show candidate names in the BLT. Default: false.
+* - sortballots (optional) If "true", sort ballots lexically so that BLT lines are not in same order as WBS table entries. It is useful to not sort ballots when debugging this code. Default: "true"
+* - shownames (optional) If "true", show candidate names in the BLT. Default: "false".
 *
 * For information about the BLT file format, see:
 * https://github.com/Conservatory/openstv/blob/master/openstv/Help.html
@@ -36,15 +37,15 @@
 
 import { JSDOM } from 'jsdom';
 
-async function main(file, nbseats, electionname, shownames = false) {
+async function main(file, nbseats, electionname, sortballots = true, shownames = false) {
     if (isNaN(nbseats)) {
        throw new Error(`Required number of seats missing.`);
     }
     const dom = await JSDOM.fromFile(file);
-    generateBLT(dom.window.document, nbseats, electionname, shownames);
+    generateBLT(dom.window.document, nbseats, electionname, sortballots, shownames);
 }
 
-function generateBLT (document, nbseats, electionname, shownames) {
+function generateBLT (document, nbseats, electionname, sortballots, shownames) {
   const table = document.querySelector("table")
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
@@ -65,12 +66,16 @@ function generateBLT (document, nbseats, electionname, shownames) {
     console.log(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join(''));
   }
   // List of ballots, each with weight "1" and ending with "0"
-  console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));
+  if (sortballots == "true") {
+     console.log(ballots.sort().map(s => "1 " + s.join(" ") + " 0").join("\n"));
+  } else {
+     console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));  
+  }
   // Zero separator
   console.log("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(shownames ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
+    console.log(shownames == "true" ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
   }
   // Election name
   console.log(`"${electionname}"`);
@@ -155,9 +160,10 @@ function skips(ballot) {
 const file = process.argv[2];
 const nbseats = process.argv[3];
 const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
-const shownames = process.argv[5] === undefined ? false : process.argv[5];
+const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
+const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
 
-main(file, nbseats, electionname, shownames)
+main(file, nbseats, electionname, sortballots, shownames)
   .catch(err => {
     console.log(`Something went wrong: ${err.message}`);
     throw err;
