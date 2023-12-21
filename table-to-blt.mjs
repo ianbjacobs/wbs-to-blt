@@ -37,15 +37,15 @@
 
 import { JSDOM } from 'jsdom';
 
-async function main(file, nbseats, electionname, sortballots = true, shownames = false) {
+export async function main(file, nbseats, electionname, sortballots = true, shownames = false) {
     if (isNaN(nbseats)) {
        throw new Error(`Required number of seats missing.`);
     }
     const dom = await JSDOM.fromFile(file);
-    generateBLT(dom.window.document, nbseats, electionname, sortballots, shownames);
+    return generateBLT(dom.window.document, nbseats, electionname, sortballots, shownames);
 }
 
-function generateBLT (document, nbseats, electionname, sortballots, shownames) {
+export function generateBLT (document, nbseats, electionname, sortballots, shownames) {
   const table = document.querySelector("table")
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
@@ -54,36 +54,39 @@ function generateBLT (document, nbseats, electionname, sortballots, shownames) {
   const re0 = /Candidate has withdrawn from the election:\s/ ;
   const withdrawn = candidates.map(c => c.match(re0) ? true : false) ;
   candidates = candidates.map(c => c.replace(re0,'')) ;
-  const ballots = generateBallots(document, rows, candidates);
+  const [ballots, skips] = generateBallots(document, rows, candidates);
   
+  const bltLines = [];
+
   // Generate BLT
   // First row is number of candidates and number of seats
-  console.log(`${nbcandidates} ${nbseats}`);
+  bltLines.push(`${nbcandidates} ${nbseats}`);
   // Identify any withdrawn candidates. Multiple withdrawn
   // candidates can appear on one line, each with "-" next to
   // candidate number (e.g., -2 -3 -4).
   if (withdrawn.some(w => w)) {
-    console.log(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join(''));
+    bltLines.push(withdrawn.map((w,i) => w ? -(i + 1) + ' ': '').join(''));
   }
   // List of ballots, each with weight "1" and ending with "0"
   if (sortballots == "true") {
-     console.log(ballots.sort().map(s => "1 " + s.join(" ") + " 0").join("\n"));
+     bltLines.push(ballots.sort().map(s => "1 " + s.join(" ") + " 0").join("\n"));
   } else {
-     console.log(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));  
+     bltLines.push(ballots.map(s => "1 " + s.join(" ") + " 0").join("\n"));  
   }
   // Zero separator
-  console.log("0");
+  bltLines.push("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(shownames == "true" ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
+    bltLines.push(shownames == "true" ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
   }
   // Election name
-  console.log(`"${electionname}"`);
+  bltLines.push(`"${electionname}"`);
+  return [bltLines, skips];
 }
 
 function generateBallots(document, rows, candidates) {
     const ballots = [];
-
+    const skipped = [];
     // Ignore first row (candidate names)
     for (const row of rows.slice(1)) {
         // Handle cells in the row.
@@ -96,9 +99,9 @@ function generateBallots(document, rows, candidates) {
         // Per OpenSTV, ballot is invalid if there are duplicates or skips
 
         if (duplicateRankings(rankedcells)) {
-	  console.error(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
+	  skipped.push(`Ballot ignored (duplicate rankings): ${row.querySelector('th').textContent}`);
 	} else if (skips(rankedcells)) {
-          console.error(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
+          skipped.push(`Ballot ignored (skips in rankings): ${row.querySelector('th').textContent}`);
 	} else {
 	  const ordered = [];
 	  for (const cell of rankedcells) {
@@ -107,7 +110,7 @@ function generateBallots(document, rows, candidates) {
 	  ballots.push(ordered);
         }
     }	
-    return(ballots);
+    return [ballots, skipped];
  }
 
 function getVote (cell) {
@@ -157,14 +160,21 @@ function skips(ballot) {
   return ballot.some((v,i) => (v.rank - i) >= 2)
 }
 
-const file = process.argv[2];
-const nbseats = process.argv[3];
-const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
-const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
-const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
-
-main(file, nbseats, electionname, sortballots, shownames)
-  .catch(err => {
-    console.log(`Something went wrong: ${err.message}`);
-    throw err;
-  });
+// Detect if we're running from the node CLI
+if (import.meta.url === ('file:///'+ process?.argv[1].replace(/\\/g,'/')).replace(/\/{3,}/,'///')) {
+  const file = process.argv[2];
+  const nbseats = process.argv[3];
+  const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
+  const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
+  const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
+  
+  main(file, nbseats, electionname, sortballots, shownames)
+    .then(([lines, skipped]) => {
+      console.log(lines.join("\n"));
+      console.warn(skipped.join("\n"));
+    })
+    .catch(err => {
+      console.error(`Something went wrong: ${err.message}`);
+      throw err;
+    });
+}

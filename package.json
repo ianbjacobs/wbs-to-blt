@@ -1,0 +1,15 @@
+{
+  "main": "table-to-blt.mjs",
+  "engines" : {
+    "node": ">=20.0"
+  },
+  "dependencies": {
+    "jsdom": "^23.0.1"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0"
+  },
+  "scripts": {
+    "test": "mocha --recursive"
+  }
+}
