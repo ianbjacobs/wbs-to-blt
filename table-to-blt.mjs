@@ -46,7 +46,7 @@ async function main(file, nbseats, electionname, sortballots = true, shownames =
 }
 
 function generateBLT (document, nbseats, electionname, sortballots, shownames) {
-  const table = document.querySelector("table")
+  const table = document.querySelector("table.results")
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
   const nbcandidates = rows[1].querySelectorAll('td').length;
