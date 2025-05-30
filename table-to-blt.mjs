@@ -149,7 +149,7 @@ function generateBallots(document, rows, candidates) {
 
 function getVote (cell) {
   // WBS form generates "Ranked N" (most of the time). Remove "Ranked"
-  const re1 = /.*\s+([0123456789])+$/ ;
+  const re1 = /.*\s+([0123456789]+)$/ ;
   const re2 = /\s*Unranked\s*/ ;
   const re3 = /Candidate has withdrawn from the election:\s/ ;
   let title = cell.getAttribute('title');
@@ -183,7 +183,7 @@ function getVote (cell) {
 function duplicateRankings(ballot) {
   // Input ballot is sorted (no Infinity).
   // In valid ballot, rank - index = 1.
-  // Rank - index = 0 implies duplicate. (e.g., 1 2 2 3 or 1 2 3 3)
+    // Rank - index = 0 implies duplicate. (e.g., 1 2 2 3 or 1 2 3 3)
   return ballot.some((v,i) => (v.rank - i) == 0)
 }
 
