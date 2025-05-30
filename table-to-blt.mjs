@@ -1,3 +1,8 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import { JSDOM } from 'jsdom';
+
 /**
 * This tool reads a file with a single table element in it and
 * generates a BLT file as input to OpenSTV
@@ -35,7 +40,39 @@
 *   ballot is valid." Therefore we preserve empty ballots.
 */
 
-import { JSDOM } from 'jsdom';
+/**
+*const program = new Command();
+*program
+*  .command ('table-to-blt')
+*  .description('Generate a BLT file for an STV election, with WBS results as input')
+*  .argument('<file>', 'Election results from WBS as HTML file')
+*  .argument('<nbseats>', 'number of seats up for election')
+*  .option('-n, --name', 'name for this election for blt output')
+*  .option('--sort', 'If true), sort ballots lexically to obfuscate order from WBS. Default: true')
+*  .option('--showname', 'If true, show candidate names in blt output. Default: false')
+*  .action(function () { return (command(...arguments)) } );
+*
+*export default async function (options) {
+*  if (options.length < 2) {
+*     console.warn('Insufficient arguments');
+*     exit;
+*     }
+*}
+*/
+
+
+ const file = process.argv[2];
+ const nbseats = process.argv[3];
+ const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
+ const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
+ const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
+
+ main(file, nbseats, electionname, sortballots, shownames)
+   .catch(err => {
+     console.log(`Something went wrong: ${err.message}`);
+     throw err;
+   });
+
 
 async function main(file, nbseats, electionname, sortballots = true, shownames = false) {
     if (isNaN(nbseats)) {
@@ -112,7 +149,7 @@ function generateBallots(document, rows, candidates) {
 
 function getVote (cell) {
   // WBS form generates "Ranked N" (most of the time). Remove "Ranked"
-  const re1 = /.*\s+([0123456789])$/ ;
+  const re1 = /.*\s+([0123456789])+$/ ;
   const re2 = /\s*Unranked\s*/ ;
   const re3 = /Candidate has withdrawn from the election:\s/ ;
   let title = cell.getAttribute('title');
@@ -157,14 +194,6 @@ function skips(ballot) {
   return ballot.some((v,i) => (v.rank - i) >= 2)
 }
 
-const file = process.argv[2];
-const nbseats = process.argv[3];
-const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
-const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
-const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
-
-main(file, nbseats, electionname, sortballots, shownames)
-  .catch(err => {
-    console.log(`Something went wrong: ${err.message}`);
-    throw err;
-  });
+/**
+  program.parseAsync(process.argv);
+  */
