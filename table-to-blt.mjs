@@ -40,41 +40,37 @@ import { JSDOM } from 'jsdom';
 *   ballot is valid." Therefore we preserve empty ballots.
 */
 
+
+const program = new Command();
+program
+  .command ('table-to-blt <file> <nbseats> [title] [sortballots] [shownames]')
+    .description('Generate a BLT file for an STV election, with a WBS results file and number of seats as input. Optional arguments: Title; Sort ballots lexically? (default: false). Show names? (default: true)')
+  .action(function () { return (main(...arguments)) } );
+
+export default async function (options) {
+  if (options.length < 2) {
+     console.warn('Insufficient arguments');
+     exit;
+     }
+}
+
 /**
-*const program = new Command();
-*program
-*  .command ('table-to-blt')
-*  .description('Generate a BLT file for an STV election, with WBS results as input')
-*  .argument('<file>', 'Election results from WBS as HTML file')
-*  .argument('<nbseats>', 'number of seats up for election')
-*  .option('-n, --name', 'name for this election for blt output')
-*  .option('--sort', 'If true), sort ballots lexically to obfuscate order from WBS. Default: true')
-*  .option('--showname', 'If true, show candidate names in blt output. Default: false')
-*  .action(function () { return (command(...arguments)) } );
-*
-*export default async function (options) {
-*  if (options.length < 2) {
-*     console.warn('Insufficient arguments');
-*     exit;
-*     }
-*}
+* const file = process.argv[2];
+* const nbseats = process.argv[3];
+* const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
+* const sortballots = process.argv[5] === undefined ? "false" : process.argv[5];
+* const shownames = process.argv[6] === undefined ? "true" : process.argv[6];
+
+* main(file, nbseats, electionname, sortballots, shownames)
+*   .catch(err => {
+*     console.log(`Something went wrong: ${err.message}`);
+*     throw err;
+*   });
 */
 
+const date = new Date().toISOString().slice(0, 10);
 
- const file = process.argv[2];
- const nbseats = process.argv[3];
- const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
- const sortballots = process.argv[5] === undefined ? "true" : process.argv[5];
- const shownames = process.argv[6] === undefined ? "false" : process.argv[6];
-
- main(file, nbseats, electionname, sortballots, shownames)
-   .catch(err => {
-     console.log(`Something went wrong: ${err.message}`);
-     throw err;
-   });
-
-
-async function main(file, nbseats, electionname, sortballots = true, shownames = false) {
+async function main(file, nbseats, electionname = `Election ${date}`, sortballots = 'false', shownames = 'true') {
     if (isNaN(nbseats)) {
        throw new Error(`Required number of seats missing.`);
     }
@@ -194,6 +190,5 @@ function skips(ballot) {
   return ballot.some((v,i) => (v.rank - i) >= 2)
 }
 
-/**
-  program.parseAsync(process.argv);
-  */
+program.parseAsync(process.argv);
+
