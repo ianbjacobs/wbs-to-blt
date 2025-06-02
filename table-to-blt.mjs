@@ -45,7 +45,7 @@ const program = new Command();
 program
     .description('Generate a BLT file for an STV election, with a WBS results file and number of seats as input.')
     .argument('<file>', 'A WBS file with a table of results.')
-    .argument('<nbseats>', 'The number of seats in this election.')
+    .argument('<nbseats>', 'The number of seats in this election.', checkInt)
     .argument('[title]', 'A title for this election in the BLT file, otherwise will use a generic string with the date')
     .argument('[sortballots]', 'If true, sort ballots lexically (default: false)')
     .argument('[hidenames]', 'If true, anonymize candidate names (default: false)')
@@ -54,10 +54,6 @@ program
 const date = new Date().toISOString().slice(0, 10);
 
 async function main(file, nbseats, title = `Election ${date}`, sortballots = 'false', hidenames = 'false') {
-    // Do this test outside main
-    if (isNaN(nbseats)) {
-       throw new Error(`Required number of seats missing.`);
-    }
     const dom = await JSDOM.fromFile(file);
     generateBLT(dom.window.document, nbseats, title, sortballots, hidenames);
 }
@@ -172,6 +168,12 @@ function skips(ballot) {
   // In valid ballot, rank - index = 1.
   // Rank - index >= 2 implies skip. (e.g., 1 2 4 5 or 1 5 6)
   return ballot.some((v,i) => (v.rank - i) >= 2)
+}
+
+function checkInt(value) {
+    if (isNaN(value)) {
+	throw new Error(`Argument is not a number`);
+    }
 }
 
 program.parseAsync(process.argv);
