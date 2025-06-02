@@ -173,6 +173,8 @@ function skips(ballot) {
 function checkInt(value) {
     if (isNaN(value)) {
 	throw new Error(`Argument is not a number`);
+    } else {
+	return (value);
     }
 }
 
