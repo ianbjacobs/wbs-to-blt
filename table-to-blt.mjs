@@ -17,9 +17,9 @@ import { JSDOM } from 'jsdom';
 * Arguments:
 * - document: HTML file with a table with class including "results"; the code picks the first one because this is what WBS forms produce.
 * - nbseats: The number of seats available for election
-* - electionname (optional): The title that should appear in the BLT file (not semantically important).
+* - title (optional): The title that should appear in the BLT file (not semantically important).
 * - sortballots (optional) If "true", sort ballots lexically so that BLT lines are not in same order as WBS table entries. It is useful to not sort ballots when debugging this code. Default: "true"
-* - shownames (optional) If "true", show candidate names in the BLT. Default: "false".
+* - hidenames (optional) If "true", show anonymized names in the BLT. Default: "false".
 *
 * For information about the BLT file format, see:
 * https://github.com/Conservatory/openstv/blob/master/openstv/Help.html
@@ -43,42 +43,26 @@ import { JSDOM } from 'jsdom';
 
 const program = new Command();
 program
-  .command ('table-to-blt <file> <nbseats> [title] [sortballots] [shownames]')
-    .description('Generate a BLT file for an STV election, with a WBS results file and number of seats as input. Optional arguments: Title; Sort ballots lexically? (default: false). Show names? (default: true)')
-  .action(function () { return (main(...arguments)) } );
-
-export default async function (options) {
-  if (options.length < 2) {
-     console.warn('Insufficient arguments');
-     exit;
-     }
-}
-
-/**
-* const file = process.argv[2];
-* const nbseats = process.argv[3];
-* const electionname = process.argv[4] === undefined ? ("Election " + new Date().toISOString().slice(0, 10)) : process.argv[4];
-* const sortballots = process.argv[5] === undefined ? "false" : process.argv[5];
-* const shownames = process.argv[6] === undefined ? "true" : process.argv[6];
-
-* main(file, nbseats, electionname, sortballots, shownames)
-*   .catch(err => {
-*     console.log(`Something went wrong: ${err.message}`);
-*     throw err;
-*   });
-*/
+    .description('Generate a BLT file for an STV election, with a WBS results file and number of seats as input.')
+    .argument('<file>', 'A WBS file with a table of results.')
+    .argument('<nbseats>', 'The number of seats in this election.')
+    .argument('[title]', 'A title for this election in the BLT file, otherwise will use a generic string with the date')
+    .argument('[sortballots]', 'If true, sort ballots lexically (default: false)')
+    .argument('[hidenames]', 'If true, anonymize candidate names (default: false)')
+    .action(main);
 
 const date = new Date().toISOString().slice(0, 10);
 
-async function main(file, nbseats, electionname = `Election ${date}`, sortballots = 'false', shownames = 'true') {
+async function main(file, nbseats, title = `Election ${date}`, sortballots = 'false', hidenames = 'false') {
+    // Do this test outside main
     if (isNaN(nbseats)) {
        throw new Error(`Required number of seats missing.`);
     }
     const dom = await JSDOM.fromFile(file);
-    generateBLT(dom.window.document, nbseats, electionname, sortballots, shownames);
+    generateBLT(dom.window.document, nbseats, title, sortballots, hidenames);
 }
 
-function generateBLT (document, nbseats, electionname, sortballots, shownames) {
+function generateBLT (document, nbseats, title, sortballots, hidenames) {
   const table = document.querySelector("table.results")
   const rows = [...table.querySelectorAll("tr")];
   // Use first row of table since zeroth row is all th.
@@ -108,10 +92,10 @@ function generateBLT (document, nbseats, electionname, sortballots, shownames) {
   console.log("0");
   // Names of candidates, ignoring the first column.
   for (let i = 0; i < nbcandidates; i++) {
-    console.log(shownames == "true" ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
+    console.log(hidenames == "false" ? `"${candidates[i].trim()}"` : `"Candidate ${i + 1}"`);
   }
   // Election name
-  console.log(`"${electionname}"`);
+  console.log(`"${title}"`);
 }
 
 function generateBallots(document, rows, candidates) {

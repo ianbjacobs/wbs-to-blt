@@ -2,7 +2,7 @@
 Turns a data table from a WBS form until BLT data. In the initial version, targeting OpenSTV.
 
 <pre>
-     npx table-to-blt table-to-blt wbsfile nbseats [electionname] [sortballots] [shownames] &gt; results.blt
+     npx table-to-blt wbsfile nbseats [title] [sortballots] [hidenames] &gt; results.blt
 </pre>
 
 
