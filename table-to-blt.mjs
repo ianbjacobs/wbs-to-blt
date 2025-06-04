@@ -197,10 +197,10 @@ async function allballots(file) {
     const results = ballots.map(b => b.map(candidate => candidates[candidate - 1].split(' ')[0])).sort((a, b) => (b.join('') < a.join('')) ? 1 : -1);
     for (let r of results) {
 	if (r.length != 0) {
-	    process.stdout.write(r.join(' '));
+	    process.stdout.write(r.join('\t'));
 	    const unranked = nbcandidates - r.length;
 	    if (unranked > 0) {
-		process.stdout.write(' (' + unranked + " unranked)")
+		process.stdout.write("\t" + Array(unranked).fill("*").join('\t'));
 	    }
 	    process.stdout.write("\n");
 	}
