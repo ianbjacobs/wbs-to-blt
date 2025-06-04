@@ -51,6 +51,12 @@ program
     .argument('[hidenames]', 'If true, anonymize candidate names (default: false)')
     .action(main);
 
+program
+    .command('allballots')
+    .description('Generate a list of all ballots with candidate names shown, lexically by first ranked candidate in ballot')
+    .argument('<file>', 'A WBS file with a table of results.')
+    .action(allballots)
+
 const date = new Date().toISOString().slice(0, 10);
 
 async function main(file, nbseats, title = `Election ${date}`, sortballots = 'false', hidenames = 'false') {
@@ -175,6 +181,29 @@ function checkInt(value) {
 	throw new Error(`Argument is not a number`);
     } else {
 	return (value);
+    }
+}
+
+async function allballots(file) {
+    const dom = await JSDOM.fromFile(file);
+    const document = dom.window.document;
+    const table = document.querySelector("table.results")
+    const rows = [...table.querySelectorAll("tr")];
+    const nbcandidates = rows[1].querySelectorAll('td').length;    
+    let candidates = [...rows[0].querySelectorAll('th')].map(s => s.textContent).slice(1) ;
+    const re0 = /Candidate has withdrawn from the election:\s/ ;
+    candidates = candidates.map(c => c.replace(re0,'')) ;
+    const ballots = generateBallots(document, rows, candidates);
+    const results = ballots.map(b => b.map(candidate => candidates[candidate - 1].split(' ')[0])).sort((a, b) => (b.join('') < a.join('')) ? 1 : -1);
+    for (let r of results) {
+	if (r.length != 0) {
+	    process.stdout.write(r.join(' '));
+	    const unranked = nbcandidates - r.length;
+	    if (unranked > 0) {
+		process.stdout.write(' (' + unranked + " unranked)")
+	    }
+	    process.stdout.write("\n");
+	}
     }
 }
 
